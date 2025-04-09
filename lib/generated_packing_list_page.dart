@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'trip_model.dart';
+import 'packing_item.dart';
 
 class GeneratedPackingListPage extends StatefulWidget {
   final Trip trip;
@@ -10,14 +12,17 @@ class GeneratedPackingListPage extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _GeneratedPackingListPageState createState() => _GeneratedPackingListPageState();
+  _GeneratedPackingListPageState createState() =>
+      _GeneratedPackingListPageState();
 }
 
-class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> with TickerProviderStateMixin {
+class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
+    with TickerProviderStateMixin {
+  static const Color _darkBlueColor = Color(0xFF003366); // Dark blue color
+  static const Color _primaryColor = Color(0xFF0D47A1); // Primary color (blue)
   late TabController _tabController;
   int _selectedTabIndex = 0;
-  
-  // Static data structure for packing categories
+
   static const Map<String, List<Map<String, dynamic>>> _packingCategories = {
     'Clothes': [
       {'item': 'Underwear', 'weight': 0.1},
@@ -76,6 +81,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
     ],
     'Essentials': [
       {'item': 'Passport(if needed)', 'weight': 0.1},
+      {'item': 'ID', 'weight': 0.1},
       {'item': 'Credit Card/Wallet', 'weight': 0.2},
       {'item': 'Travel Insurance Documents', 'weight': 0.05},
       {'item': 'Travel tickets/boarding passes', 'weight': 0.05},
@@ -84,15 +90,20 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
   };
 
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
   ];
 
-  // UI constants
-  static const Color _primaryColor = Color(0xFF386CAF);
-  static const Color _darkBlueColor = Color(0xFF242649);
-
-  // Runtime data structures
   late final Map<String, List<PackingItem>> _filteredCategories;
   late final List<PackingItem> _allItems;
 
@@ -101,8 +112,10 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
     super.initState();
     _filteredCategories = _getFilteredCategories();
     _allItems = _getAllItems();
-    _tabController = TabController(length: _filteredCategories.length + 1, vsync: this)
-      ..addListener(_onTabChanged);
+    _tabController =
+        TabController(length: _filteredCategories.length + 1, vsync: this)
+          ..addListener(_onTabChanged);
+    _loadCheckedItems();
   }
 
   void _onTabChanged() {
@@ -120,7 +133,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
 
   String _formatDate(DateTime date) => '${_months[date.month - 1]} ${date.day}';
 
-  String get _formattedDateRange => 
+  String get _formattedDateRange =>
       '${_formatDate(widget.trip.startDate)} - ${_formatDate(widget.trip.endDate)}';
 
   double get _luggageWeight => _allItems
@@ -128,7 +141,6 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
       .fold(0.0, (sum, item) => sum + item.weight);
 
   Map<String, List<PackingItem>> _getFilteredCategories() {
-
     final filteredCategories = <String, List<PackingItem>>{
       'Essentials': _createItemsFromCategory('Essentials'),
       'Clothes': _createItemsFromCategory('Clothes'),
@@ -137,24 +149,29 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
     };
 
     if (widget.trip.tripType == 'Business') {
-      filteredCategories['Business Trip Extras'] = _createItemsFromCategory('Business Trip Extras');
+      filteredCategories['Business Trip Extras'] =
+          _createItemsFromCategory('Business Trip Extras');
     } else if (widget.trip.tripType == 'Vacation') {
-      filteredCategories['Vacation Extras'] = _createItemsFromCategory('Vacation Extras');
+      filteredCategories['Vacation Extras'] =
+          _createItemsFromCategory('Vacation Extras');
+    } else if (widget.trip.destination == 'Beach') {
+      filteredCategories['Beach Essentials'] =
+          _createItemsFromCategory('Beach Essentials');
     }
-    
+
     return filteredCategories;
   }
 
   List<PackingItem> _createItemsFromCategory(String category) {
-    return _packingCategories[category]!.map((item) => 
-      PackingItem(
-        name: item['item'] as String,
-        weight: item['weight'] as double,
-        category: category,
-        isChecked: false,
-      )
-    ).toList();
-        }
+    return _packingCategories[category]!
+        .map((item) => PackingItem(
+              name: item['item'] as String,
+              weight: item['weight'] as double,
+              category: category,
+              isChecked: false,
+            ))
+        .toList();
+  }
 
   List<PackingItem> _getAllItems() {
     final allItems = <PackingItem>[];
@@ -166,21 +183,42 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
 
   void _updateItemStatus(String category, String itemName, bool value) {
     setState(() {
-
       for (final item in _filteredCategories[category]!) {
         if (item.name == itemName) {
           item.isChecked = value;
           break;
         }
       }
-      
+
       for (final item in _allItems) {
         if (item.name == itemName && item.category == category) {
-      item.isChecked = value;
+          item.isChecked = value;
           break;
         }
       }
     });
+    _saveCheckedItems();
+  }
+
+  Future<void> _saveCheckedItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tripId = widget.trip.id;
+
+    for (var item in _allItems) {
+      await prefs.setBool('$tripId-${item.name}', item.isChecked);
+    }
+  }
+
+  Future<void> _loadCheckedItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final tripId = widget.trip.id;
+
+    for (var item in _allItems) {
+      final isChecked = prefs.getBool('$tripId-${item.name}') ?? false;
+      setState(() {
+        item.isChecked = isChecked;
+      });
+    }
   }
 
   @override
@@ -188,16 +226,16 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
     return Scaffold(
       appBar: _buildAppBar(),
       body: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(26),
-                  child: _buildLuggageEstimationSection(),
-                ),
-                Expanded(
-                  child: _buildTabsSection(),
-                ),
-              ],
-            ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(26),
+            child: _buildLuggageEstimationSection(),
+          ),
+          Expanded(
+            child: _buildTabsSection(),
+          ),
+        ],
+      ),
     );
   }
 
@@ -251,9 +289,11 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
             scrollDirection: Axis.horizontal,
             children: [
               _buildTab('All Items', 0),
-              ..._filteredCategories.keys.toList().asMap().entries.map(
-                (entry) => _buildTab(entry.value, entry.key + 1)
-              ),
+              ..._filteredCategories.keys
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map((entry) => _buildTab(entry.value, entry.key + 1)),
             ],
           ),
         ),
@@ -263,9 +303,8 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
             controller: _tabController,
             children: [
               _buildAllItemsWithGroups(),
-              ..._filteredCategories.entries.map((entry) => 
-                _buildCategoryList(entry.key, entry.value)
-              ),
+              ..._filteredCategories.entries
+                  .map((entry) => _buildCategoryList(entry.key, entry.value)),
             ],
           ),
         ),
@@ -275,7 +314,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
 
   Widget _buildTab(String text, int index) {
     final isSelected = _selectedTabIndex == index;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -365,7 +404,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
       ),
     );
   }
-  
+
   Widget _buildItemTile(PackingItem item) {
     return CheckboxListTile(
       title: Text(item.name),
@@ -384,22 +423,22 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
       activeColor: Colors.grey[600],
     );
   }
-  
+
   Widget _buildAllItemsWithGroups() {
     // Group items by category
     final Map<String, List<PackingItem>> groupedItems = {};
-    
+
     for (final item in _allItems) {
       (groupedItems[item.category] ??= []).add(item);
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 26),
       itemCount: groupedItems.length,
       itemBuilder: (context, index) {
         final category = groupedItems.keys.elementAt(index);
         final items = groupedItems[category]!;
-        
+
         return Container(
           margin: const EdgeInsets.only(bottom: 16.0),
           decoration: BoxDecoration(
@@ -433,19 +472,4 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> wit
       },
     );
   }
-}
-
-// Model class for packing items
-class PackingItem {
-  final String name;
-  final double weight;
-  final String category;
-  bool isChecked;
-
-  PackingItem({
-    required this.name,
-    required this.weight,
-    required this.category,
-    this.isChecked = false,
-  });
 }

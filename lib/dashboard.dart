@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:travelpack/generated_packing_list_page.dart';
 import 'create_trip_page.dart';
 import 'trip_service.dart';
 import 'trip_model.dart';
@@ -37,8 +38,8 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _deleteTrip(Trip trip) async {
-      await _tripsService.deleteTrip(trip.id);
-      _loadTrips();
+    await _tripsService.deleteTrip(trip.id);
+    _loadTrips();
   }
 
   @override
@@ -55,55 +56,68 @@ class _DashboardPageState extends State<DashboardPage> {
         backgroundColor: Color(0xFF242649),
       ),
       body: _trips.isEmpty
-        ? Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'No trips added yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.grey[600],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'No trips added yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey[600],
+                    ),
                   ),
-                ),
-                SizedBox(height: 16),
-                Text(
-                  'Click + to create a new trip',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey[500],
+                  SizedBox(height: 16),
+                  Text(
+                    'Click + to create a new trip',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[500],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+            )
+          : ListView.builder(
+              itemCount: _trips.length,
+              itemBuilder: (context, index) {
+                final trip = _trips[index];
+                return Dismissible(
+                  key: Key(trip.id),
+                  background: Container(
+                    color: Colors.red,
+                    child: Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                    alignment: Alignment.centerRight,
+                    padding: EdgeInsets.only(right: 20),
+                  ),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (direction) {
+                    _deleteTrip(trip);
+                  },
+                  child: GestureDetector(
+                    onTap: () {
+                      // Navigate to trip details page
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              GeneratedPackingListPage(trip: trip),
+                        ),
+                      );
+                    },
+                    child: ListTile(
+                      title: Text(trip.title),
+                      subtitle: Text('${trip.destination} | ${trip.tripType}'),
+                      trailing: Text(
+                          '${trip.startDate.day}/${trip.startDate.month} - ${trip.endDate.day}/${trip.endDate.month}'),
+                    ),
+                  ),
+                );
+              },
             ),
-          )
-        : ListView.builder(
-            itemCount: _trips.length,
-            itemBuilder: (context, index) {
-              final trip = _trips[index];
-              return Dismissible(
-                key: Key(trip.id),
-                background: Container(
-                  color: Colors.red,
-                  child: Icon(
-                    Icons.delete, 
-                    color: Colors.white,
-                  ),
-                  alignment: Alignment.centerRight,
-                  padding: EdgeInsets.only(right: 20),
-                      ),
-                direction: DismissDirection.endToStart,
-                onDismissed: (direction) {
-                  _deleteTrip(trip);
-                },
-                child: ListTile(
-                  title: Text(trip.title),
-                  subtitle: Text('${trip.destination} | ${trip.tripType}'),
-                  trailing: Text('${trip.startDate.day}/${trip.startDate.month} - ${trip.endDate.day}/${trip.endDate.month}'),
-                ),
-              );
-            },
-          ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToCreateTrip,
         backgroundColor: Color(0xFF242649),
@@ -111,7 +125,7 @@ class _DashboardPageState extends State<DashboardPage> {
           Icons.add,
           color: Colors.white,
         ),
-        shape: CircleBorder(), 
+        shape: CircleBorder(),
       ),
     );
   }

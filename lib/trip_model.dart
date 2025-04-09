@@ -17,21 +17,21 @@ class Trip {
 
   // Convert Trip to JSON
   Map<String, dynamic> toJson() => {
-    'id': id,
-    'title': title,
-    'destination': destination,
-    'startDate': startDate.toIso8601String(),
-    'endDate': endDate.toIso8601String(),
-    'tripType': tripType,
-  };
+        'id': id,
+        'title': title,
+        'destination': destination,
+        'startDate': startDate.toIso8601String(),
+        'endDate': endDate.toIso8601String(),
+        'tripType': tripType,
+      };
 
   // Create Trip from JSON
   factory Trip.fromJson(Map<String, dynamic> json) => Trip(
-    id: json['id'],
-    title: json['title'],
-    destination: json['destination'],
-    startDate: DateTime.parse(json['startDate']),
-    endDate: DateTime.parse(json['endDate']),
-    tripType: json['tripType'],
-  );
+        id: json['id'],
+        title: json['title'],
+        destination: json['destination'],
+        startDate: DateTime.parse(json['startDate']),
+        endDate: DateTime.parse(json['endDate']),
+        tripType: json['tripType'],
+      );
 }
