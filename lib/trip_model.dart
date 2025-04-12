@@ -5,6 +5,7 @@ class Trip {
   DateTime startDate;
   DateTime endDate;
   String tripType;
+  double progress; // NEW FIELD
 
   Trip({
     required this.id,
@@ -13,9 +14,9 @@ class Trip {
     required this.startDate,
     required this.endDate,
     required this.tripType,
+    this.progress = 0.0,
   });
 
-  // Convert Trip to JSON
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
@@ -23,9 +24,9 @@ class Trip {
         'startDate': startDate.toIso8601String(),
         'endDate': endDate.toIso8601String(),
         'tripType': tripType,
+        'progress': progress,
       };
 
-  // Create Trip from JSON
   factory Trip.fromJson(Map<String, dynamic> json) => Trip(
         id: json['id'],
         title: json['title'],
@@ -33,5 +34,6 @@ class Trip {
         startDate: DateTime.parse(json['startDate']),
         endDate: DateTime.parse(json['endDate']),
         tripType: json['tripType'],
+        progress: (json['progress'] ?? 0.0).toDouble(),
       );
 }
