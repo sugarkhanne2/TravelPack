@@ -35,18 +35,44 @@ class AllTripsPage extends StatelessWidget {
     return months[month];
   }
 
-  Widget _buildCountdownBadge(DateTime startDate) {
+  int _daysUntilTrip(DateTime startDate) {
     final now = DateTime.now();
-    final daysLeft = startDate.difference(now).inDays;
-    if (daysLeft < 0) return SizedBox();
+    final today = DateTime(now.year, now.month, now.day);
+    final tripStart = DateTime(startDate.year, startDate.month, startDate.day);
+    return tripStart.difference(today).inDays;
+  }
+
+  Widget _buildCountdownBadge(DateTime startDate) {
+    final daysUntil = _daysUntilTrip(startDate);
+    
+    if (daysUntil < -30) return SizedBox();
+    
+    String daysText;
+    Color daysBadgeColor;
+  
+    if (daysUntil < 0) {
+      final daysElapsed = daysUntil.abs();
+      daysText = 'Day $daysElapsed';
+      daysBadgeColor = Color(0xFF4CAF50); 
+    } else if (daysUntil == 0) {
+      daysText = 'Today';
+      daysBadgeColor = Color(0xFF4CAF50); 
+    } else if (daysUntil == 1) {
+      daysText = 'Tomorrow';
+      daysBadgeColor = Color(0xFF386CAF); 
+    } else {
+      daysText = 'In $daysUntil days';
+      daysBadgeColor = Color(0xFF386CAF); 
+    }
+    
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.blue[600],
+        color: daysBadgeColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        'In $daysLeft days',
+        daysText,
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
@@ -62,10 +88,10 @@ class AllTripsPage extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           "All Trips",
-          style: TextStyle(color: Colors.white), // Title changed to white
+          style: TextStyle(color: Colors.white), 
         ),
         backgroundColor: Color(0xFF242649),
-        iconTheme: IconThemeData(color: Colors.white), // Optional: icons white too
+        iconTheme: IconThemeData(color: Colors.white), 
       ),
       body: FutureBuilder<List<Trip>>(
         future: _fetchTrips(),
@@ -75,7 +101,7 @@ class AllTripsPage extends StatelessWidget {
           }
 
           final trips = (snapshot.data ?? [])
-              .where((trip) => trip.startDate.isAfter(DateTime.now()))
+              .where((trip) => trip.startDate.isAfter(DateTime.now().subtract(Duration(days: 30))))
               .toList()
             ..sort((a, b) => a.startDate.compareTo(b.startDate));
 
