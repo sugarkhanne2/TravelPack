@@ -60,8 +60,12 @@ class AllTripsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("All Trips"),
+        title: Text(
+          "All Trips",
+          style: TextStyle(color: Colors.white), // Title changed to white
+        ),
         backgroundColor: Color(0xFF242649),
+        iconTheme: IconThemeData(color: Colors.white), // Optional: icons white too
       ),
       body: FutureBuilder<List<Trip>>(
         future: _fetchTrips(),

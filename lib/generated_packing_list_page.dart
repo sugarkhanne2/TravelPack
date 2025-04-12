@@ -18,11 +18,18 @@ class GeneratedPackingListPage extends StatefulWidget {
 
 class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     with TickerProviderStateMixin {
-  static const Color _darkBlueColor = Color(0xFF003366); // Dark blue color
-  static const Color _primaryColor = Color(0xFF0D47A1); // Primary color (blue)
+  static const Color _darkBlueColor = Color(0xFF003366); 
+  static const Color _primaryColor = Color(0xFF0D47A1); 
   late TabController _tabController;
   int _selectedTabIndex = 0;
-
+  late final Map<String, List<PackingItem>> _filteredCategories;
+  late final List<PackingItem> _allItems;
+  
+  static const List<String> _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  
   static const Map<String, List<Map<String, dynamic>>> _packingCategories = {
     'Clothes': [
       {'item': 'Underwear', 'weight': 0.1},
@@ -89,59 +96,28 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     ],
   };
 
-  static const List<String> _months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec'
-  ];
-
-  late final Map<String, List<PackingItem>> _filteredCategories;
-  late final List<PackingItem> _allItems;
-
   @override
   void initState() {
     super.initState();
     _filteredCategories = _getFilteredCategories();
-    _allItems = _getAllItems();
-    _tabController =
-        TabController(length: _filteredCategories.length + 1, vsync: this)
-          ..addListener(_onTabChanged);
+    _allItems = _filteredCategories.values.expand((items) => items).toList();
+    _tabController = TabController(length: _filteredCategories.length + 1, vsync: this)
+      ..addListener(() {
+        if (_tabController.index != _selectedTabIndex) {
+          setState(() => _selectedTabIndex = _tabController.index);
+        }
+      });
     _loadCheckedItems();
-  }
-
-  void _onTabChanged() {
-    if (_tabController.index != _selectedTabIndex) {
-      setState(() => _selectedTabIndex = _tabController.index);
-    }
   }
 
   @override
   void dispose() {
-    _tabController.removeListener(_onTabChanged);
     _tabController.dispose();
     super.dispose();
   }
 
-  String _formatDate(DateTime date) => '${_months[date.month - 1]} ${date.day}';
-
-  String get _formattedDateRange =>
-      '${_formatDate(widget.trip.startDate)} - ${_formatDate(widget.trip.endDate)}';
-
-  double get _luggageWeight => _allItems
-      .where((item) => item.isChecked)
-      .fold(0.0, (sum, item) => sum + item.weight);
-
   Map<String, List<PackingItem>> _getFilteredCategories() {
-    final filteredCategories = <String, List<PackingItem>>{
+    final categories = {
       'Essentials': _createItemsFromCategory('Essentials'),
       'Clothes': _createItemsFromCategory('Clothes'),
       'Toiletries': _createItemsFromCategory('Toiletries'),
@@ -149,47 +125,39 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     };
 
     if (widget.trip.tripType == 'Business') {
-      filteredCategories['Business Trip Extras'] =
-          _createItemsFromCategory('Business Trip Extras');
+      categories['Business Trip Extras'] = _createItemsFromCategory('Business Trip Extras');
     } else if (widget.trip.tripType == 'Vacation') {
-      filteredCategories['Vacation Extras'] =
-          _createItemsFromCategory('Vacation Extras');
+      categories['Vacation Extras'] = _createItemsFromCategory('Vacation Extras');
     } else if (widget.trip.destination == 'Beach') {
-      filteredCategories['Beach Essentials'] =
-          _createItemsFromCategory('Beach Essentials');
+      categories['Beach Essentials'] = _createItemsFromCategory('Beach Essentials');
     }
 
-    return filteredCategories;
+    return categories;
   }
 
   List<PackingItem> _createItemsFromCategory(String category) {
-    return _packingCategories[category]!
-        .map((item) => PackingItem(
-              name: item['item'] as String,
-              weight: item['weight'] as double,
-              category: category,
-              isChecked: false,
-            ))
-        .toList();
+    final items = _packingCategories[category];
+    if (items == null) return [];
+    
+    return items.map((item) => PackingItem(
+      name: item['item'] as String,
+      weight: item['weight'] as double,
+      category: category,
+      isChecked: false,
+    )).toList();
   }
 
-  List<PackingItem> _getAllItems() {
-    final allItems = <PackingItem>[];
-    for (final entry in _filteredCategories.entries) {
-      allItems.addAll(entry.value);
-    }
-    return allItems;
+  String _formatDateRange() {
+    final start = widget.trip.startDate;
+    final end = widget.trip.endDate;
+    return '${_months[start.month - 1]} ${start.day} - ${_months[end.month - 1]} ${end.day}';
   }
+
+  double get _luggageWeight => 
+    _allItems.where((item) => item.isChecked).fold(0.0, (sum, item) => sum + item.weight);
 
   void _updateItemStatus(String category, String itemName, bool value) {
     setState(() {
-      for (final item in _filteredCategories[category]!) {
-        if (item.name == itemName) {
-          item.isChecked = value;
-          break;
-        }
-      }
-
       for (final item in _allItems) {
         if (item.name == itemName && item.category == category) {
           item.isChecked = value;
@@ -213,18 +181,52 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     final prefs = await SharedPreferences.getInstance();
     final tripId = widget.trip.id;
 
-    for (var item in _allItems) {
-      final isChecked = prefs.getBool('$tripId-${item.name}') ?? false;
-      setState(() {
-        item.isChecked = isChecked;
-      });
-    }
+    setState(() {
+      for (var item in _allItems) {
+        item.isChecked = prefs.getBool('$tripId-${item.name}') ?? false;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: _buildAppBar(),
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: _darkBlueColor,
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.trip.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+            Text(
+              _formatDateRange(),
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
           Padding(
@@ -235,111 +237,6 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
             child: _buildTabsSection(),
           ),
         ],
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: const BoxDecoration(
-          color: _darkBlueColor,
-          shape: BoxShape.circle,
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-          padding: EdgeInsets.zero,
-        ),
-      ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            widget.trip.title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          Text(
-            _formattedDateRange,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabsSection() {
-    return Column(
-      children: [
-        Container(
-          color: Colors.white,
-          height: 48,
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: [
-              _buildTab('All Items', 0),
-              ..._filteredCategories.keys
-                  .toList()
-                  .asMap()
-                  .entries
-                  .map((entry) => _buildTab(entry.value, entry.key + 1)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 10),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildAllItemsWithGroups(),
-              ..._filteredCategories.entries
-                  .map((entry) => _buildCategoryList(entry.key, entry.value)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTab(String text, int index) {
-    final isSelected = _selectedTabIndex == index;
-
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedTabIndex = index;
-          _tabController.animateTo(index);
-        });
-      },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        height: 36,
-        decoration: BoxDecoration(
-          color: isSelected ? _primaryColor : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _primaryColor),
-        ),
-        child: Center(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isSelected ? Colors.white : Colors.black,
-              fontSize: 12,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -370,36 +267,66 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     );
   }
 
-  Widget _buildCategoryList(String category, List<PackingItem> items) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.grey.shade100,
+  Widget _buildTabsSection() {
+    final categoryNames = _filteredCategories.keys.toList();
+    
+    return Column(
+      children: [
+        // Tab bar
+        Container(
+          color: Colors.white,
+          height: 48,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _buildTab('All Items', 0),
+              ...categoryNames.asMap().entries.map((e) => _buildTab(e.value, e.key + 1)),
+            ],
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(
-                category,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+        const SizedBox(height: 10),
+        // Tab content
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAllItemsWithGroups(),
+              ...categoryNames.map((category) => 
+                  _buildCategoryList(category, _filteredCategories[category]!)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTab(String text, int index) {
+    final isSelected = _selectedTabIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedTabIndex = index;
+          _tabController.animateTo(index);
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? _primaryColor : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _primaryColor),
+        ),
+        child: Center(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: isSelected ? Colors.white : Colors.black,
+              fontSize: 12,
             ),
-            const Divider(height: 1),
-            Expanded(
-              child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (context, index) => _buildItemTile(items[index]),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -424,10 +351,56 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
     );
   }
 
-  Widget _buildAllItemsWithGroups() {
-    // Group items by category
-    final Map<String, List<PackingItem>> groupedItems = {};
+  Widget _buildCategoryContainer({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16.0),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.grey.shade100,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ...children,
+        ],
+      ),
+    );
+  }
 
+  Widget _buildCategoryList(String category, List<PackingItem> items) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 26),
+      child: _buildCategoryContainer(
+        title: category,
+        children: [
+          Expanded(
+            child: ListView.builder(
+              itemCount: items.length,
+              itemBuilder: (context, index) => _buildItemTile(items[index]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAllItemsWithGroups() {
+    final Map<String, List<PackingItem>> groupedItems = {};
     for (final item in _allItems) {
       (groupedItems[item.category] ??= []).add(item);
     }
@@ -439,35 +412,16 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage>
         final category = groupedItems.keys.elementAt(index);
         final items = groupedItems[category]!;
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.shade300),
-            borderRadius: BorderRadius.circular(20),
-            color: Colors.grey.shade100,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Text(
-                  category,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const Divider(height: 1),
-              ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: items.length,
-                itemBuilder: (_, itemIndex) => _buildItemTile(items[itemIndex]),
-              ),
-            ],
-          ),
+        return _buildCategoryContainer(
+          title: category,
+          children: [
+            ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              itemCount: items.length,
+              itemBuilder: (_, i) => _buildItemTile(items[i]),
+            ),
+          ],
         );
       },
     );
