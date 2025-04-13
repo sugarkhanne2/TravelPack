@@ -370,7 +370,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     }
     
     Color cardColor = Colors.grey[100]!;
-    Color progressColor = Color(0xFF386CAF);
+    Color progressColor = Colors.lightBlue;
     
     return GestureDetector(
       onTap: () {
