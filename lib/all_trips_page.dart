@@ -3,10 +3,49 @@ import 'generated_packing_list_page.dart';
 import 'trip_model.dart';
 import 'trip_service.dart';
 
-class AllTripsPage extends StatelessWidget {
-  final TripsService _tripsService = TripsService();
+class AllTripsPage extends StatefulWidget {
+  @override
+  _AllTripsPageState createState() => _AllTripsPageState();
+}
 
-  Future<List<Trip>> _fetchTrips() => _tripsService.getTrips();
+class _AllTripsPageState extends State<AllTripsPage> {
+  final TripsService _tripsService = TripsService();
+  List<Trip> _trips = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTrips();
+  }
+
+  Future<void> _fetchTrips() async {
+    setState(() {
+      _isLoading = true;
+    });
+    
+    final trips = await _tripsService.getTrips();
+  
+    for (var trip in trips) {
+      final progress = await _calculateTripProgress(trip);
+      trip.progress = progress;
+      await _tripsService.saveTrip(trip);
+    }
+  
+    final filteredTrips = trips
+        .where((trip) => trip.startDate.isAfter(DateTime.now().subtract(Duration(days: 1))))
+        .toList()
+      ..sort((a, b) => a.startDate.compareTo(b.startDate));
+    
+    setState(() {
+      _trips = filteredTrips;
+      _isLoading = false;
+    });
+  }
+  
+  Future<double> _calculateTripProgress(Trip trip) async {
+    return await _tripsService.calculateTripProgress(trip);
+  }
 
   String _formatDateRange(DateTime start, DateTime end) {
     return '${_monthDay(start)} - ${_monthDay(end)}';
@@ -45,24 +84,20 @@ class AllTripsPage extends StatelessWidget {
   Widget _buildCountdownBadge(DateTime startDate) {
     final daysUntil = _daysUntilTrip(startDate);
     
-    if (daysUntil < -30) return SizedBox();
+    if (daysUntil < 0) return SizedBox();
     
     String daysText;
     Color daysBadgeColor;
   
-    if (daysUntil < 0) {
-      final daysElapsed = daysUntil.abs();
-      daysText = 'Day $daysElapsed';
-      daysBadgeColor = Color(0xFF4CAF50); 
-    } else if (daysUntil == 0) {
+    if (daysUntil == 0) {
       daysText = 'Today';
-      daysBadgeColor = Color(0xFF4CAF50); 
+      daysBadgeColor = Color(0xFF4CAF50);
     } else if (daysUntil == 1) {
       daysText = 'Tomorrow';
-      daysBadgeColor = Color(0xFF386CAF); 
+      daysBadgeColor = Color(0xFF386CAF);
     } else {
       daysText = 'In $daysUntil days';
-      daysBadgeColor = Color(0xFF386CAF); 
+      daysBadgeColor = Color(0xFF386CAF);
     }
     
     return Container(
@@ -82,6 +117,27 @@ class AllTripsPage extends StatelessWidget {
     );
   }
 
+  // Method to handle trip deletion
+  Future<void> _deleteTrip(Trip trip) async {
+    try {
+      await _tripsService.deleteTrip(trip.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Trip "${trip.title}" deleted'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _fetchTrips(); // Refresh the list
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete trip: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,89 +149,109 @@ class AllTripsPage extends StatelessWidget {
         backgroundColor: Color(0xFF242649),
         iconTheme: IconThemeData(color: Colors.white), 
       ),
-      body: FutureBuilder<List<Trip>>(
-        future: _fetchTrips(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-
-          final trips = (snapshot.data ?? [])
-              .where((trip) => trip.startDate.isAfter(DateTime.now().subtract(Duration(days: 30))))
-              .toList()
-            ..sort((a, b) => a.startDate.compareTo(b.startDate));
-
-          return ListView.builder(
-            padding: EdgeInsets.all(12),
-            itemCount: trips.length,
-            itemBuilder: (context, index) {
-              final trip = trips[index];
-              return GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          GeneratedPackingListPage(trip: trip),
+      body: _isLoading 
+          ? Center(child: CircularProgressIndicator())
+          : _trips.isEmpty
+              ? Center(
+                  child: Text(
+                    "No upcoming trips",
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
                     ),
-                  );
-                },
-                child: Container(
-                  margin: EdgeInsets.symmetric(vertical: 6),
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            trip.title,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(12),
+                  itemCount: _trips.length,
+                  itemBuilder: (context, index) {
+                    final trip = _trips[index];
+                    return Container(
+                      margin: EdgeInsets.symmetric(vertical: 6),
+                      child: Dismissible(
+                        key: Key(trip.id),
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          alignment: Alignment.centerRight,
+                          padding: EdgeInsets.only(right: 20),
+                          child: Icon(Icons.delete, color: Colors.white),
+                        ),
+                        direction: DismissDirection.endToStart,
+                        onDismissed: (_) => _deleteTrip(trip),
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => GeneratedPackingListPage(trip: trip),
+                              ),
+                            ).then((_) {
+                              _fetchTrips();
+                            });
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey[100],
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          trip.title,
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      _buildCountdownBadge(trip.startDate),
+                                    ],
+                                  ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    _formatDateRange(trip.startDate, trip.endDate),
+                                    style: TextStyle(color: Colors.grey[700]),
+                                  ),
+                                  SizedBox(height: 12),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: LinearProgressIndicator(
+                                      value: trip.progress ?? 0.0,
+                                      backgroundColor: Colors.grey[300],
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.lightBlue,
+                                      ),
+                                      minHeight: 8,
+                                    ),
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    '${((trip.progress ?? 0.0) * 100).toInt()}% packed',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          _buildCountdownBadge(trip.startDate),
-                        ],
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        _formatDateRange(trip.startDate, trip.endDate),
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                      SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: trip.progress ?? 0.15,
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.lightBlue,
-                          ),
-                          minHeight: 8,
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        '${((trip.progress ?? 0.15) * 100).toInt()}% packed',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.grey[800],
-                        ),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          );
-        },
-      ),
     );
   }
 }

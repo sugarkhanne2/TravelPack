@@ -28,16 +28,34 @@ class _CreateTripPageState extends State<CreateTripPage> {
   );
 
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final initialDate = isStartDate 
+        ? _startDate ?? today
+        : _endDate ?? (_startDate != null ? _startDate!.add(Duration(days: 1)) : today.add(Duration(days: 1)));
+    
+    final firstDate = isStartDate 
+        ? today 
+        : (_startDate != null ? _startDate!.add(Duration(days: 1)) : today.add(Duration(days: 1)));
+    
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: DateTime(2101),
     );
     
     if (picked != null) {
       setState(() {
-        isStartDate ? _startDate = picked : _endDate = picked;
+        if (isStartDate) {
+          _startDate = picked;
+          if (_endDate != null && _endDate!.isBefore(_startDate!)) {
+            _endDate = null;
+          }
+        } else {
+          _endDate = picked;
+        }
       });
     }
   }
@@ -57,6 +75,15 @@ class _CreateTripPageState extends State<CreateTripPage> {
 
     if (_startDate == null || _endDate == null) {
       _showErrorSnackBar('Please select both start and end dates');
+      return;
+    }
+
+    // Check if start date is in the past
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    if (_startDate!.isBefore(today)) {
+      _showErrorSnackBar('Start date cannot be in the past');
       return;
     }
 
@@ -154,7 +181,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                           const Text('Start Date', style: _headerStyle),
                           const SizedBox(height: 8),
                           TextFormField(
-                            decoration: _getInputDecoration('Enter start Date'),
+                            decoration: _getInputDecoration('Select start date'),
                             readOnly: true,
                             onTap: () => _selectDate(context, true),
                             controller: TextEditingController(text: _formatDate(_startDate)),
@@ -171,7 +198,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
                           const Text('End Date', style: _headerStyle),
                           const SizedBox(height: 8),
                           TextFormField(
-                            decoration: _getInputDecoration('Enter end Date'),
+                            decoration: _getInputDecoration('Select end date'),
                             readOnly: true,
                             onTap: () => _selectDate(context, false),
                             controller: TextEditingController(text: _formatDate(_endDate)),

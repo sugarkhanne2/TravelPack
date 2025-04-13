@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'trip_model.dart';
 import 'packing_item.dart';
+import 'trip_service.dart';
 
 class GeneratedPackingListPage extends StatefulWidget {
   final Trip trip;
@@ -22,6 +23,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
   int _selectedTabIndex = 0;
   late final Map<String, List<PackingItem>> _filteredCategories;
   late final List<PackingItem> _allItems;
+  late final TripsService _tripsService = TripsService(); 
   
   static const List<String> _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
@@ -114,10 +116,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
       categories['Business Trip Extras'] = _createItemsFromCategory('Business Trip Extras');
     } else if (widget.trip.tripType == 'Vacation') {
       categories['Vacation Extras'] = _createItemsFromCategory('Vacation Extras');
-    } else if (widget.trip.destination == 'Beach') {
-      categories['Beach Essentials'] = _createItemsFromCategory('Beach Essentials');
     }
-
     return categories;
   }
 
@@ -142,7 +141,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
   double get _luggageWeight => 
     _allItems.where((item) => item.isChecked).fold(0.0, (sum, item) => sum + item.weight);
 
-  void _updateItemStatus(String category, String itemName, bool value) {
+  void _updateItemStatus(String category, String itemName, bool value) async {
     setState(() {
       for (final item in _allItems) {
         if (item.name == itemName && item.category == category) {
@@ -151,7 +150,20 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
         }
       }
     });
-    _saveCheckedItems();
+    
+    await _saveCheckedItems();
+    await _updateTripProgress(); 
+  }
+
+  Future<void> _updateTripProgress() async {
+    final checkedCount = _allItems.where((item) => item.isChecked).length;
+    final totalCount = _allItems.length;
+    
+    final progress = totalCount > 0 ? checkedCount / totalCount : 0.0;
+    
+    final updatedTrip = widget.trip.copyWith(progress: progress);
+    
+    await _tripsService.saveTrip(updatedTrip);
   }
 
   Future<void> _saveCheckedItems() async {
@@ -172,6 +184,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
         item.isChecked = prefs.getBool('$tripId-${item.name}') ?? false;
       }
     });
+    await _updateTripProgress();
   }
 
   void _selectCategory(int index) {
