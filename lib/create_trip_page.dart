@@ -13,7 +13,7 @@ class CreateTripPage extends StatefulWidget {
 class _CreateTripPageState extends State<CreateTripPage> {
   final _formKey = GlobalKey<FormState>();
   final _tripsService = TripsService();
-  
+
   String _tripTitle = '';
   String _destination = '';
   DateTime? _startDate;
@@ -23,29 +23,35 @@ class _CreateTripPageState extends State<CreateTripPage> {
   static const List<String> _tripTypes = ['Business', 'Casual', 'Vacation'];
   static const Color _primaryColor = Color(0xFF242649);
   static const TextStyle _headerStyle = TextStyle(
-    fontSize: 16, 
+    fontSize: 16,
     fontWeight: FontWeight.bold,
   );
 
+  // Show date picker for start or end date
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
-    final initialDate = isStartDate 
+
+    final initialDate = isStartDate
         ? _startDate ?? today
-        : _endDate ?? (_startDate != null ? _startDate!.add(Duration(days: 1)) : today.add(Duration(days: 1)));
-    
-    final firstDate = isStartDate 
-        ? today 
-        : (_startDate != null ? _startDate!.add(Duration(days: 1)) : today.add(Duration(days: 1)));
-    
+        : _endDate ??
+            (_startDate != null
+                ? _startDate!.add(Duration(days: 1))
+                : today.add(Duration(days: 1)));
+
+    final firstDate = isStartDate
+        ? today
+        : (_startDate != null
+            ? _startDate!.add(Duration(days: 1))
+            : today.add(Duration(days: 1)));
+
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: initialDate,
       firstDate: firstDate,
       lastDate: DateTime(2101),
     );
-    
+
     if (picked != null) {
       setState(() {
         if (isStartDate) {
@@ -70,6 +76,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     );
   }
 
+  // Handles form validation and trip creation
   void _generatePackingList() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -81,7 +88,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
     // Check if start date is in the past
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+
     if (_startDate!.isBefore(today)) {
       _showErrorSnackBar('Start date cannot be in the past');
       return;
@@ -98,7 +105,8 @@ class _CreateTripPageState extends State<CreateTripPage> {
     }
 
     _formKey.currentState!.save();
-    
+
+    // Create a new trip
     final trip = Trip(
       id: '',
       title: _tripTitle,
@@ -108,6 +116,7 @@ class _CreateTripPageState extends State<CreateTripPage> {
       tripType: _tripType!,
     );
 
+    // Save the trip and navigate to the packing list page
     _tripsService.saveTrip(trip).then((savedTrip) {
       Navigator.pop(context, savedTrip);
       Navigator.push(
@@ -136,13 +145,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
             padding: EdgeInsets.zero,
           ),
         ),
-        title: const Text(
-          'New Trip', 
-          style: TextStyle(
-            color: Colors.black,
-            fontWeight: FontWeight.bold,
-          )
-        ),
+        title: const Text('New Trip',
+            style: TextStyle(
+              color: Colors.black,
+              fontWeight: FontWeight.bold,
+            )),
         backgroundColor: Colors.white,
         elevation: 0,
       ),
@@ -158,20 +165,20 @@ class _CreateTripPageState extends State<CreateTripPage> {
                 const SizedBox(height: 8),
                 TextFormField(
                   decoration: _getInputDecoration('Enter trip title'),
-                  validator: (value) => value!.isEmpty ? 'Please enter a trip title' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter a trip title' : null,
                   onSaved: (value) => _tripTitle = value!,
                 ),
                 const SizedBox(height: 16),
-                
                 const Text('Destination', style: _headerStyle),
                 const SizedBox(height: 8),
                 TextFormField(
                   decoration: _getInputDecoration('Enter destination'),
-                  validator: (value) => value!.isEmpty ? 'Please enter a destination' : null,
+                  validator: (value) =>
+                      value!.isEmpty ? 'Please enter a destination' : null,
                   onSaved: (value) => _destination = value!,
                 ),
                 const SizedBox(height: 16),
-                
                 Row(
                   children: [
                     Expanded(
@@ -181,11 +188,15 @@ class _CreateTripPageState extends State<CreateTripPage> {
                           const Text('Start Date', style: _headerStyle),
                           const SizedBox(height: 8),
                           TextFormField(
-                            decoration: _getInputDecoration('Select start date'),
+                            decoration:
+                                _getInputDecoration('Select start date'),
                             readOnly: true,
                             onTap: () => _selectDate(context, true),
-                            controller: TextEditingController(text: _formatDate(_startDate)),
-                            validator: (value) => _startDate == null ? 'Please select start date' : null,
+                            controller: TextEditingController(
+                                text: _formatDate(_startDate)),
+                            validator: (value) => _startDate == null
+                                ? 'Please select start date'
+                                : null,
                           ),
                         ],
                       ),
@@ -201,8 +212,11 @@ class _CreateTripPageState extends State<CreateTripPage> {
                             decoration: _getInputDecoration('Select end date'),
                             readOnly: true,
                             onTap: () => _selectDate(context, false),
-                            controller: TextEditingController(text: _formatDate(_endDate)),
-                            validator: (value) => _endDate == null ? 'Please select end date' : null,
+                            controller: TextEditingController(
+                                text: _formatDate(_endDate)),
+                            validator: (value) => _endDate == null
+                                ? 'Please select end date'
+                                : null,
                           ),
                         ],
                       ),
@@ -210,35 +224,34 @@ class _CreateTripPageState extends State<CreateTripPage> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
                 const Text('Trip Type', style: _headerStyle),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   decoration: _getInputDecoration('Select an option'),
-                  hint: const Text('Select an option', style: TextStyle(color: Colors.grey)),
-                  items: _tripTypes.map((String type) => 
-                    DropdownMenuItem(value: type, child: Text(type))
-                  ).toList(),
-                  validator: (value) => value == null ? 'Please select a trip type' : null,
+                  hint: const Text('Select an option',
+                      style: TextStyle(color: Colors.grey)),
+                  items: _tripTypes
+                      .map((String type) =>
+                          DropdownMenuItem(value: type, child: Text(type)))
+                      .toList(),
+                  validator: (value) =>
+                      value == null ? 'Please select a trip type' : null,
                   onChanged: (value) => setState(() => _tripType = value),
                 ),
                 const SizedBox(height: 24),
-                
                 ElevatedButton(
                   onPressed: _generatePackingList,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text(
-                    'Generate Packing List', 
-                    style: TextStyle(
-                      fontSize: 16, 
-                      color: Colors.white, 
-                      fontWeight: FontWeight.bold
-                    )
-                  ),
+                  child: const Text('Generate Packing List',
+                      style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold)),
                 ),
               ],
             ),

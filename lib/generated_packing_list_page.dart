@@ -23,13 +23,23 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
   int _selectedTabIndex = 0;
   late final Map<String, List<PackingItem>> _filteredCategories;
   late final List<PackingItem> _allItems;
-  late final TripsService _tripsService = TripsService(); 
-  
+  late final TripsService _tripsService = TripsService();
+
   static const List<String> _months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec'
   ];
-  
+
   static const Map<String, List<Map<String, dynamic>>> _packingCategories = {
     'Clothes': [
       {'item': 'Underwear', 'weight': 0.1},
@@ -104,6 +114,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
     _loadCheckedItems();
   }
 
+  // Filters the packing categories based on the trip type
   Map<String, List<PackingItem>> _getFilteredCategories() {
     final categories = {
       'Essentials': _createItemsFromCategory('Essentials'),
@@ -113,23 +124,28 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
     };
 
     if (widget.trip.tripType == 'Business') {
-      categories['Business Trip Extras'] = _createItemsFromCategory('Business Trip Extras');
+      categories['Business Trip Extras'] =
+          _createItemsFromCategory('Business Trip Extras');
     } else if (widget.trip.tripType == 'Vacation') {
-      categories['Vacation Extras'] = _createItemsFromCategory('Vacation Extras');
+      categories['Vacation Extras'] =
+          _createItemsFromCategory('Vacation Extras');
     }
     return categories;
   }
 
+  // Creates packing items from the specified category
   List<PackingItem> _createItemsFromCategory(String category) {
     final items = _packingCategories[category];
     if (items == null) return [];
-    
-    return items.map((item) => PackingItem(
-      name: item['item'] as String,
-      weight: item['weight'] as double,
-      category: category,
-      isChecked: false,
-    )).toList();
+
+    return items
+        .map((item) => PackingItem(
+              name: item['item'] as String,
+              weight: item['weight'] as double,
+              category: category,
+              isChecked: false,
+            ))
+        .toList();
   }
 
   String _formatDateRange() {
@@ -138,9 +154,12 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
     return '${_months[start.month - 1]} ${start.day} - ${_months[end.month - 1]} ${end.day}';
   }
 
-  double get _luggageWeight => 
-    _allItems.where((item) => item.isChecked).fold(0.0, (sum, item) => sum + item.weight);
+  // Calculates the total weight of checked items
+  double get _luggageWeight => _allItems
+      .where((item) => item.isChecked)
+      .fold(0.0, (sum, item) => sum + item.weight);
 
+  // Updates the status of an item and saves it to SharedPreferences
   void _updateItemStatus(String category, String itemName, bool value) async {
     setState(() {
       for (final item in _allItems) {
@@ -150,22 +169,24 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
         }
       }
     });
-    
+
     await _saveCheckedItems();
-    await _updateTripProgress(); 
+    await _updateTripProgress();
   }
 
+  // Updates the trip progress based on the checked items
   Future<void> _updateTripProgress() async {
     final checkedCount = _allItems.where((item) => item.isChecked).length;
     final totalCount = _allItems.length;
-    
+
     final progress = totalCount > 0 ? checkedCount / totalCount : 0.0;
-    
+
     final updatedTrip = widget.trip.copyWith(progress: progress);
-    
+
     await _tripsService.saveTrip(updatedTrip);
   }
 
+  // Saves the checked items to SharedPreferences
   Future<void> _saveCheckedItems() async {
     final prefs = await SharedPreferences.getInstance();
     final tripId = widget.trip.id;
@@ -175,6 +196,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
     }
   }
 
+  // Loads the checked items from SharedPreferences
   Future<void> _loadCheckedItems() async {
     final prefs = await SharedPreferences.getInstance();
     final tripId = widget.trip.id;
@@ -193,28 +215,29 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
     });
   }
 
+  // Generates the list of items for the selected category
   List<Widget> _getItemsForSelectedCategory() {
     if (_selectedTabIndex == 0) {
       final widgets = <Widget>[];
       final Map<String, List<PackingItem>> groupedItems = {};
-      
+
       for (final item in _allItems) {
         (groupedItems[item.category] ??= []).add(item);
       }
-      
+
       groupedItems.forEach((category, items) {
         widgets.add(_buildCategoryContainer(
           title: category,
           children: items.map((item) => _buildItemTile(item)).toList(),
         ));
       });
-      
+
       return widgets;
     } else {
       final categoryNames = _filteredCategories.keys.toList();
       final category = categoryNames[_selectedTabIndex - 1];
       final items = _filteredCategories[category]!;
-      
+
       return [
         _buildCategoryContainer(
           title: category,
@@ -269,7 +292,6 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
             padding: const EdgeInsets.all(22),
             child: _buildLuggageEstimationSection(),
           ),
-          
           SizedBox(
             height: 48,
             child: Padding(
@@ -285,9 +307,7 @@ class _GeneratedPackingListPageState extends State<GeneratedPackingListPage> {
               ),
             ),
           ),
-          
           const SizedBox(height: 8),
-          
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 22),

@@ -23,26 +23,28 @@ class _AllTripsPageState extends State<AllTripsPage> {
     setState(() {
       _isLoading = true;
     });
-    
+
     final trips = await _tripsService.getTrips();
-  
+
+    // Calculate and update packing progress for each trip
     for (var trip in trips) {
       final progress = await _calculateTripProgress(trip);
       trip.progress = progress;
       await _tripsService.saveTrip(trip);
     }
-  
+
     final filteredTrips = trips
-        .where((trip) => trip.startDate.isAfter(DateTime.now().subtract(Duration(days: 1))))
+        .where((trip) =>
+            trip.startDate.isAfter(DateTime.now().subtract(Duration(days: 1))))
         .toList()
       ..sort((a, b) => a.startDate.compareTo(b.startDate));
-    
+
     setState(() {
       _trips = filteredTrips;
       _isLoading = false;
     });
   }
-  
+
   Future<double> _calculateTripProgress(Trip trip) async {
     return await _tripsService.calculateTripProgress(trip);
   }
@@ -83,12 +85,12 @@ class _AllTripsPageState extends State<AllTripsPage> {
 
   Widget _buildCountdownBadge(DateTime startDate) {
     final daysUntil = _daysUntilTrip(startDate);
-    
+
     if (daysUntil < 0) return SizedBox();
-    
+
     String daysText;
     Color daysBadgeColor;
-  
+
     if (daysUntil == 0) {
       daysText = 'Today';
       daysBadgeColor = Color(0xFF4CAF50);
@@ -99,7 +101,7 @@ class _AllTripsPageState extends State<AllTripsPage> {
       daysText = 'In $daysUntil days';
       daysBadgeColor = Color(0xFF386CAF);
     }
-    
+
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -127,7 +129,7 @@ class _AllTripsPageState extends State<AllTripsPage> {
           backgroundColor: Colors.green,
         ),
       );
-      _fetchTrips(); // Refresh the list
+      _fetchTrips();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -144,12 +146,12 @@ class _AllTripsPageState extends State<AllTripsPage> {
       appBar: AppBar(
         title: Text(
           "All Trips",
-          style: TextStyle(color: Colors.white), 
+          style: TextStyle(color: Colors.white),
         ),
         backgroundColor: Color(0xFF242649),
-        iconTheme: IconThemeData(color: Colors.white), 
+        iconTheme: IconThemeData(color: Colors.white),
       ),
-      body: _isLoading 
+      body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : _trips.isEmpty
               ? Center(
@@ -186,7 +188,8 @@ class _AllTripsPageState extends State<AllTripsPage> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => GeneratedPackingListPage(trip: trip),
+                                builder: (context) =>
+                                    GeneratedPackingListPage(trip: trip),
                               ),
                             ).then((_) {
                               _fetchTrips();
@@ -203,7 +206,8 @@ class _AllTripsPageState extends State<AllTripsPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Expanded(
                                         child: Text(
@@ -220,7 +224,8 @@ class _AllTripsPageState extends State<AllTripsPage> {
                                   ),
                                   SizedBox(height: 4),
                                   Text(
-                                    _formatDateRange(trip.startDate, trip.endDate),
+                                    _formatDateRange(
+                                        trip.startDate, trip.endDate),
                                     style: TextStyle(color: Colors.grey[700]),
                                   ),
                                   SizedBox(height: 12),

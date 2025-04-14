@@ -69,13 +69,14 @@ class TripsService {
   Future<double> calculateTripProgress(Trip trip) async {
     final prefs = await SharedPreferences.getInstance();
     final tripId = trip.id;
-    
+
     // Get all keys in SharedPreferences that start with this trip's ID
     final allKeys = prefs.getKeys();
-    final tripKeys = allKeys.where((key) => key.startsWith('$tripId-')).toList();
-    
+    final tripKeys =
+        allKeys.where((key) => key.startsWith('$tripId-')).toList();
+
     if (tripKeys.isEmpty) return 0.0;
-    
+
     // Count how many items are checked
     int checkedCount = 0;
     for (final key in tripKeys) {
@@ -83,7 +84,7 @@ class TripsService {
         checkedCount++;
       }
     }
-    
+
     return checkedCount / tripKeys.length;
   }
 }
