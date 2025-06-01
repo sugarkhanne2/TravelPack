@@ -1,20 +1,7 @@
-<<<<<<< HEAD
-# TravelPack
+CMSC 156 Midterm Project - TravelPack
 =======
-# travelpack
+This application is being developed as part of our Midterm Project for the Mobile Development course under the BS Computer Science program at UP Visayas (UPV).
 
-A new Flutter project.
+It is currently built using Flutter and Dart in Android Studio.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
->>>>>>> 7b6d538 ([Labao][Setup] commit and project setup)
+Developers: Khanne Labao and Jullene Rae Arsenal
